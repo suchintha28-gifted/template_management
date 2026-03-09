@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Template Management — Gifted</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; }
+    select, input, button { font-family: inherit; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+
+    const GiftedLogo = () => (
+      <svg viewBox="0 0 710 220" style={{height:'32px'}}>
+        <path fill="#4f0942" d="M81.56,7.52A8.82,8.82,0,0,0,70.66.28,94.85,94.85,0,0,0,99.05,186.74a8.82,8.82,0,0,0,8.26-10.15Z"/>
+        <circle fill="#ffbf31" cx="136.79" cy="45.56" r="38.4"/>
+        <path fill="#ff534a" d="M188.4,109.17l-47.82-7.83a13.92,13.92,0,0,0-15.92,11.55L111.31,196a13.89,13.89,0,0,0,11.41,16l47.82,7.83a13.92,13.92,0,0,0,15.92-11.55l13.35-83.09A13.89,13.89,0,0,0,188.4,109.17Z"/>
+        <path fill="#2a303d" d="M307.49,91.86v17.76h34.24a27.75,27.75,0,0,1-10.35,16.25q-7.86,5.94-18.94,5.94a31.52,31.52,0,0,1-23-9.16,30.63,30.63,0,0,1-9.33-22.77,31,31,0,0,1,9-22.62,29.88,29.88,0,0,1,22.14-9.17q20.25,0,29.14,16.76l17.77-6.16a39.82,39.82,0,0,0-17.92-21.48,56.65,56.65,0,0,0-29-7.44q-21.55,0-36.42,14.53T260,99.88q0,21.2,15,35.65T311.86,150q21.57,0,35.55-14.18t14-35.65c0-2.2-.15-5-.44-8.31Z"/>
+        <rect fill="#2a303d" x="369.69" y="76.4" width="19.23" height="71.45"/>
+        <path fill="#2a303d" d="M379.31,43.75a11.22,11.22,0,0,0-8.3,3.37,10.85,10.85,0,0,0-3.35,7.94,10.45,10.45,0,0,0,3.28,7.88,11.57,11.57,0,0,0,8.37,3.15,11.69,11.69,0,0,0,8.31-3.15A10.37,10.37,0,0,0,391,55.06a10.89,10.89,0,0,0-3.35-7.94A11.24,11.24,0,0,0,379.31,43.75Z"/>
+        <path fill="#2a303d" d="M494.53,132.39q-10.63,0-10.63-12.32V91.86h23.74V76.4H483.9V54.78H464.67V76.4H429V70a9.74,9.74,0,0,1,3-7.59,11.09,11.09,0,0,1,7.79-2.72a23.85,23.85,0,0,1,7.29,1.28l4.36-15.32a30.94,30.94,0,0,0-13-2.72q-13,0-20.83,7.31T409.76,70V76.4H398.69V91.86h11.07v56H429v-56h35.68V121.5q0,14.33,7.58,21.41t21,7.09q8.88,0,18.94-5.3L506.62,129A26.35,26.35,0,0,1,494.53,132.39Z"/>
+        <path fill="#2a303d" d="M549.89,74.25q-15.89,0-26.73,10.67T512.3,112.2q0,16.61,10.78,27.2T549.59,150A40.34,40.34,0,0,0,571,144.41,34.53,34.53,0,0,0,584.85,128l-17.19-3.58q-5.68,9.45-18.07,9.45a17,17,0,0,1-11.72-4.51,21.1,21.1,0,0,1-6.49-12.1h55.36v-6.45q-.57-16-11.28-26.27A35.74,35.74,0,0,0,549.89,74.25ZM532,103.89a16,16,0,0,1,6.77-9.74,19.79,19.79,0,0,1,11.15-3.43A18.25,18.25,0,0,1,560.67,94a16.89,16.89,0,0,1,6.41,9.88Z"/>
+        <path fill="#2a303d" d="M652.3,82.13q-9.62-7.87-24-7.88t-25,10.81q-10.71,10.81-10.71,27.14t10.64,27.06q10.62,10.74,25,10.74,14.28,0,24-7.73v5.58h19.23V44.76H652.3ZM646,127.59a20.37,20.37,0,0,1-14.43,5.94,19.75,19.75,0,0,1-14.64-5.8q-5.75-5.79-5.75-15.53T617,96.59a19.66,19.66,0,0,1,14.65-5.87,20.21,20.21,0,0,1,14.42,6q6.26,6,6.26,15.47T646,127.59Z"/>
+      </svg>
+    );
+
+    const NavIcon = () => (
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+    );
+
+    // ── Image Dialog ────────────────────────────────────────────────────────
+    const ImageDialog = ({ onInsert, onClose }) => {
+      const [url, setUrl] = useState('');
+      const [size, setSize] = useState('medium');
+      const [preview, setPreview] = useState(false);
+      const [err, setErr] = useState('');
+      const sizes = { small:'25%', medium:'50%', large:'75%', full:'100%' };
+
+      const handleInsert = () => {
+        if (!url.trim()) { setErr('Please enter an image URL.'); return; }
+        if (!/^https?:\/\/.+/i.test(url.trim())) { setErr('Please enter a valid URL starting with https://'); return; }
+        onInsert(url.trim(), sizes[size]);
+      };
+
+      return (
+        <div style={{position:'fixed',inset:0,backgroundColor:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000}}>
+          <div style={{backgroundColor:'white',padding:'24px',borderRadius:'8px',width:'460px',boxShadow:'0 4px 16px rgba(0,0,0,0.3)'}}>
+            <h4 style={{margin:'0 0 16px',fontSize:'16px',color:'#2a303d'}}>Insert Image</h4>
+            <div style={{marginBottom:'14px'}}>
+              <label style={{display:'block',fontSize:'13px',color:'#666',marginBottom:'5px'}}>Image URL (S3)</label>
+              <input type="text" value={url} onChange={e=>{setUrl(e.target.value);setErr('');setPreview(false);}}
+                placeholder="https://bucket.s3.amazonaws.com/image.png"
+                style={{width:'100%',padding:'8px 10px',border:'1px solid #d0d0d0',borderRadius:'4px',fontSize:'13px',boxSizing:'border-box'}}/>
+              {err && <div style={{fontSize:'12px',color:'#c62828',marginTop:'4px'}}>{err}</div>}
+            </div>
+            <div style={{marginBottom:'14px'}}>
+              <label style={{display:'block',fontSize:'13px',color:'#666',marginBottom:'5px'}}>Display size</label>
+              <div style={{display:'flex',gap:'8px'}}>
+                {Object.keys(sizes).map(s=>(
+                  <button key={s} onClick={()=>setSize(s)}
+                    style={{flex:1,padding:'7px 4px',border:`1px solid ${size===s?'#1976d2':'#d0d0d0'}`,borderRadius:'4px',backgroundColor:size===s?'#e3f2fd':'white',color:size===s?'#1976d2':'#444',fontSize:'12px',fontWeight:size===s?'600':'400',cursor:'pointer',textTransform:'capitalize'}}>
+                    {s}<br/><span style={{fontWeight:'400',fontSize:'11px',color:'#888'}}>{sizes[s]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {url && (
+              <div style={{marginBottom:'14px'}}>
+                <button onClick={()=>setPreview(!preview)} style={{fontSize:'12px',color:'#1976d2',background:'none',border:'none',cursor:'pointer',padding:0}}>
+                  {preview?'Hide':'Show'} preview
+                </button>
+                {preview && (
+                  <div style={{marginTop:'8px',border:'1px solid #e0e0e0',borderRadius:'4px',padding:'8px',textAlign:'center',backgroundColor:'#fafafa'}}>
+                    <img src={url} alt="preview" crossOrigin="anonymous" referrerPolicy="no-referrer"
+                      style={{maxWidth:'100%',maxHeight:'120px',objectFit:'contain'}}
+                      onLoad={()=>setErr('')}
+                      onError={()=>setErr('⚠️ Image could not be loaded. This may be due to CORS restrictions. The URL will still be saved correctly in the template.')}/>
+                  </div>
+                )}
+              </div>
+            )}
+            <div style={{display:'flex',gap:'10px',justifyContent:'flex-end'}}>
+              <button onClick={onClose} style={{padding:'8px 16px',border:'1px solid #d0d0d0',borderRadius:'4px',backgroundColor:'white',cursor:'pointer',fontSize:'13px'}}>Cancel</button>
+              <button onClick={handleInsert} style={{padding:'8px 16px',border:'none',borderRadius:'4px',backgroundColor:'#1976d2',color:'white',cursor:'pointer',fontSize:'13px',fontWeight:'500'}}>Insert Image</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ── Link Dialog ─────────────────────────────────────────────────────────
+    const LinkDialog = ({ selectedText, onInsert, onClose }) => {
+      const [url, setUrl] = useState('');
+      const [text, setText] = useState(selectedText||'');
+      return (
+        <div style={{position:'fixed',inset:0,backgroundColor:'rgba(0,0,0,0.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:2000}}>
+          <div style={{backgroundColor:'white',padding:'24px',borderRadius:'8px',width:'400px',boxShadow:'0 4px 16px rgba(0,0,0,0.3)'}}>
+            <h4 style={{margin:'0 0 16px',fontSize:'16px',color:'#2a303d'}}>Add Hyperlink</h4>
+            <div style={{marginBottom:'14px'}}>
+              <label style={{display:'block',fontSize:'13px',color:'#666',marginBottom:'5px'}}>Link text</label>
+              <input type="text" value={text} onChange={e=>setText(e.target.value)}
+                style={{width:'100%',padding:'8px 10px',border:'1px solid #d0d0d0',borderRadius:'4px',fontSize:'13px',boxSizing:'border-box'}}/>
+            </div>
+            <div style={{marginBottom:'20px'}}>
+              <label style={{display:'block',fontSize:'13px',color:'#666',marginBottom:'5px'}}>URL</label>
+              <input type="text" value={url} onChange={e=>setUrl(e.target.value)} placeholder="https://example.com"
+                style={{width:'100%',padding:'8px 10px',border:'1px solid #d0d0d0',borderRadius:'4px',fontSize:'13px',boxSizing:'border-box'}}/>
+            </div>
+            <div style={{display:'flex',gap:'10px',justifyContent:'flex-end'}}>
+              <button onClick={onClose} style={{padding:'8px 16px',border:'1px solid #d0d0d0',borderRadius:'4px',backgroundColor:'white',cursor:'pointer',fontSize:'13px'}}>Cancel</button>
+              <button onClick={()=>{ if(url) onInsert(url,text); }} style={{padding:'8px 16px',border:'none',borderRadius:'4px',backgroundColor:'#1976d2',color:'white',cursor:'pointer',fontSize:'13px',fontWeight:'500'}}>Add Link</button>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    // ── Message Editor ───────────────────────────────────────────────────────
+    const MessageEditor = ({ value, onChange, placeholders, showImageOption }) => {
+      const editorRef = useRef(null);
+      const savedRangeRef = useRef(null);
+      const [showEmoji, setShowEmoji] = useState(false);
+      const [showLinkDlg, setShowLinkDlg] = useState(false);
+      const [showImgDlg, setShowImgDlg] = useState(false);
+      const [selText, setSelText] = useState('');
+      const emojis = ['😊','🎁','🎉','❤️','👍','🙏','✨','🎈','💝','🌟','🎊','💐'];
+
+      useEffect(() => {
+        if (editorRef.current && editorRef.current.innerHTML !== value) {
+          editorRef.current.innerHTML = value || '';
+        }
+      }, [value]);
+
+      useEffect(() => {
+        const editor = editorRef.current;
+        if (!editor) return;
+        const handleClick = (e) => {
+          if (e.target.tagName === 'IMG' && e.target.closest('[contenteditable]')) {
+            if (window.confirm('Delete this image?')) { e.target.remove(); onChange(editor.innerHTML); }
+          }
+        };
+        editor.addEventListener('click', handleClick);
+        return () => editor.removeEventListener('click', handleClick);
+      }, [onChange]);
+
+      const notifyChange = () => { if (editorRef.current) onChange(editorRef.current.innerHTML); };
+      const saveRange = () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+      };
+      const restoreRange = () => {
+        const sel = window.getSelection();
+        if (savedRangeRef.current && sel) { sel.removeAllRanges(); sel.addRange(savedRangeRef.current); }
+      };
+      const execCmd = (cmd, val=null) => { editorRef.current?.focus(); document.execCommand(cmd, false, val); notifyChange(); };
+      const insertAtCursor = (html) => {
+        editorRef.current?.focus(); restoreRange();
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0); range.deleteContents();
+          const frag = range.createContextualFragment(html);
+          const lastNode = frag.lastChild; range.insertNode(frag);
+          if (lastNode) { range.setStartAfter(lastNode); range.setEndAfter(lastNode); sel.removeAllRanges(); sel.addRange(range); }
+        } else { editorRef.current.innerHTML += html; }
+        notifyChange();
+      };
+      const handleLinkOpen = () => { saveRange(); const sel = window.getSelection(); setSelText(sel ? sel.toString() : ''); setShowLinkDlg(true); };
+      const handleLinkInsert = (url, text) => { setShowLinkDlg(false); insertAtCursor(`<a href="${url}" target="_blank" style="color:#1976d2">${text||url}</a>`); };
+      const handleImgInsert = (url, width) => { setShowImgDlg(false); insertAtCursor(`<img src="${url}" alt="image" style="width:${width};max-width:100%;height:auto;display:inline-block;vertical-align:middle;cursor:pointer;" title="Click to delete"/>`); };
+
+      const tb = {padding:'6px 10px',border:'1px solid #d0d0d0',borderRadius:'3px',backgroundColor:'white',cursor:'pointer',fontSize:'13px'};
+
+      return (
+        <div style={{position:'relative'}}>
+          <div style={{display:'flex',gap:'6px',padding:'8px',backgroundColor:'#f9f9f9',border:'1px solid #e0e0e0',borderRadius:'4px 4px 0 0',flexWrap:'wrap',alignItems:'center'}}>
+            <button onMouseDown={e=>{e.preventDefault();execCmd('bold');}} style={{...tb,fontWeight:'bold'}} title="Bold (Ctrl+B)">B</button>
+            <button onMouseDown={e=>{e.preventDefault();execCmd('italic');}} style={tb} title="Italic (Ctrl+I)"><em>I</em></button>
+            <button onMouseDown={e=>{e.preventDefault();execCmd('underline');}} style={{...tb,textDecoration:'underline'}} title="Underline (Ctrl+U)">U</button>
+            <div style={{width:'1px',height:'22px',backgroundColor:'#d0d0d0'}}/>
+            <div style={{position:'relative'}}>
+              <button onMouseDown={e=>{e.preventDefault();saveRange();setShowEmoji(!showEmoji);}} style={tb}>😊</button>
+              {showEmoji && (
+                <div style={{position:'absolute',top:'100%',left:0,marginTop:'4px',backgroundColor:'white',border:'1px solid #d0d0d0',borderRadius:'4px',padding:'8px',boxShadow:'0 2px 8px rgba(0,0,0,0.18)',zIndex:1000,display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:'4px'}}>
+                  {emojis.map(em=>(
+                    <button key={em} onMouseDown={e=>{e.preventDefault();insertAtCursor(em);setShowEmoji(false);}}
+                      style={{padding:'5px',border:'none',background:'none',cursor:'pointer',fontSize:'18px'}}>{em}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <button onMouseDown={e=>{e.preventDefault();handleLinkOpen();}} style={tb} title="Add hyperlink">🔗</button>
+            {showImageOption && (
+              <button onMouseDown={e=>{e.preventDefault();saveRange();setShowImgDlg(true);}} style={tb} title="Insert image">🖼️ Image</button>
+            )}
+          </div>
+          {placeholders?.length > 0 && (
+            <div style={{padding:'8px 12px',backgroundColor:'#f9f9f9',border:'1px solid #e0e0e0',borderTop:'none',display:'flex',gap:'8px',alignItems:'center'}}>
+              <label style={{fontSize:'12px',color:'#666',whiteSpace:'nowrap'}}>Insert placeholder:</label>
+              <select onMouseDown={saveRange} onChange={e=>{if(e.target.value){insertAtCursor(e.target.value);e.target.value='';}}} defaultValue=""
+                style={{padding:'5px 10px',border:'1px solid #d0d0d0',borderRadius:'3px',fontSize:'13px'}}>
+                <option value="">Select placeholder</option>
+                {placeholders.map(p=><option key={p.value} value={p.value}>{p.name}</option>)}
+              </select>
+            </div>
+          )}
+          <div ref={editorRef} contentEditable onInput={notifyChange} onMouseUp={saveRange} onKeyUp={saveRange}
+            style={{minHeight:'260px',padding:'14px',border:'1px solid #e0e0e0',borderTop:'none',borderRadius:'0 0 4px 4px',fontSize:'14px',lineHeight:'1.7',backgroundColor:'white',outline:'none',overflowY:'auto',boxSizing:'border-box'}}
+            spellCheck="true" suppressContentEditableWarning={true}/>
+          {showLinkDlg && <LinkDialog selectedText={selText} onInsert={handleLinkInsert} onClose={()=>setShowLinkDlg(false)}/>}
+          {showImgDlg && <ImageDialog onInsert={handleImgInsert} onClose={()=>setShowImgDlg(false)}/>}
+        </div>
+      );
+    };
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    const Sel = ({ label, value, onChange, options, disabled }) => (
+      <div>
+        <label style={{display:'block',fontSize:'13px',color:'#666',marginBottom:'6px'}}>{label}</label>
+        <select value={value} onChange={e=>onChange(e.target.value)} disabled={disabled}
+          style={{width:'100%',padding:'8px 12px',border:'1px solid #d0d0d0',borderRadius:'4px',fontSize:'14px',backgroundColor:disabled?'#f5f5f5':'white',cursor:disabled?'not-allowed':'pointer'}}>
+          <option value="">Select a value</option>
+          {options.map(o=><option key={o} value={o}>{o}</option>)}
+        </select>
+      </div>
+    );
+
+    const deliveryModes = b => !b?[]:b==='Self'?['SMS','Email','Instant Download']:['SMS','Email','Postcard','Instant Download'];
+    const deliverables = m => ({SMS:['PLAIN_TEXT'],Email:['DIGITAL_PDF','EXCEL','PLAIN_TEXT'],Postcard:['PRINTED_PDF'],'Instant Download':['DIGITAL_PDF_ZIP']}[m]||[]);
+    const msgElements = (d,m) => {
+      if (!d) return [];
+      if (d==='PLAIN_TEXT'&&m==='SMS') return ['SMS body'];
+      if (d==='DIGITAL_PDF') return ['PDF first page','Email subject','Email body','Email signature'];
+      if (d==='EXCEL'||(d==='PLAIN_TEXT'&&m==='Email')) return ['Email subject','Email body','Email signature'];
+      if (d==='PRINTED_PDF') return ['Postcard first page'];
+      if (d==='DIGITAL_PDF_ZIP') return ['PDF first page'];
+      return [];
+    };
+    const cumOpts = (msg,mode) => {
+      if (!msg) return [];
+      if ((msg==='SMS body'&&mode==='SMS')||msg==='Email body') return ['Yes','No'];
+      if (['PDF first page','Postcard first page','Email subject','Email signature'].includes(msg)) return ['-'];
+      return [];
+    };
+    const needsCum = (msg,mode) => { const o=cumOpts(msg,mode); return o.length>0&&!o.includes('-'); };
+    const getLocales = (msg,mode,cum) => {
+      if (!msg) return [];
+      if (needsCum(msg,mode)&&!cum) return [];
+      return ['English','Swedish','Danish','German','Norwegian','Spanish'];
+    };
+    const getPlaceholders = (buy,msg,cum) => {
+      if (['PDF first page','Postcard first page','Email signature'].includes(msg)) return [];
+      const base = [
+        {name:'Recipient name',value:'${recipientName}'},
+        {name:'Sender name',value:'${senderName}'},
+        {name:'Card program',value:'${brandName}'},
+        {name:'Card link',value:'${cardLink}'},
+      ];
+      if (cum==='Yes') base.push({name:'Custom text',value:'${customText}'});
+      return buy==='Self'?base.filter(p=>p.value!=='${senderName}'):base;
+    };
+    const isImgPage = msg => ['PDF first page','Postcard first page'].includes(msg);
+    const buildContent = (buy,msg,cum) => {
+      if (msg==='Email subject') return buy==='Self'?'Your ${brandName} Gift Card':'Your ${brandName} Gift Card from ${senderName}';
+      if (msg==='Email body') {
+        if (cum==='Yes') return buy==='Self'?'Hi ${recipientName},\n\n${customText}\n\nYour ${brandName} gift card is ready. Redeem:\n${cardLink}\n\nEnjoy!':'Hi ${recipientName},\n\n${senderName} sent you a gift card!\n\n${customText}\n\nYour ${brandName} gift card is ready:\n${cardLink}\n\nEnjoy!';
+        return buy==='Self'?'Hi ${recipientName},\n\nYour ${brandName} gift card is ready. Redeem:\n${cardLink}\n\nEnjoy!':'Hi ${recipientName},\n\n${senderName} sent you a ${brandName} gift card!\n\nRedeem:\n${cardLink}\n\nEnjoy!';
+      }
+      if (msg==='Email signature') return 'Best regards,\nThe Gifted Team';
+      if (msg==='SMS body') {
+        if (cum==='Yes') return buy==='Self'?'Hi ${recipientName}! Your ${brandName} gift card is ready. ${customText} Redeem: ${cardLink}':'Hi ${recipientName}! ${senderName} sent you a ${brandName} gift card. ${customText} Redeem: ${cardLink}';
+        return buy==='Self'?'Hi ${recipientName}! Your ${brandName} gift card is ready. Redeem: ${cardLink}':'Hi ${recipientName}! ${senderName} sent you a ${brandName} gift card. Redeem: ${cardLink}';
+      }
+      return '';
+    };
+    const canSearch = (buy,dm,dv,msg,locale,cum,mode) => {
+      if (!buy||!dm||!dv||!msg||!locale) return false;
+      if (needsCum(msg,mode)&&!cum) return false;
+      return true;
+    };
+
+    const btnP = dis=>({backgroundColor:dis?'#d0d0d0':'#1976d2',color:'white',padding:'9px 22px',borderRadius:'4px',fontSize:'14px',fontWeight:'500',border:'none',cursor:dis?'not-allowed':'pointer'});
+    const btnS = {backgroundColor:'white',color:'#666',padding:'9px 22px',borderRadius:'4px',fontSize:'14px',fontWeight:'500',border:'1px solid #d0d0d0',cursor:'pointer'};
+    const btnG = dis=>({backgroundColor:dis?'#d0d0d0':'#4caf50',color:'white',padding:'9px 22px',borderRadius:'4px',fontSize:'14px',fontWeight:'500',border:'none',cursor:dis?'not-allowed':'pointer'});
+
+    // ── Editor Panel ──────────────────────────────────────────────────────────
+    const EditorPanel = ({ buy, msg, mode, cum, placeholders, tabKey, onReset, onCancel }) => {
+      const [content, setContent] = useState(() => isImgPage(msg)?'':buildContent(buy,msg,cum));
+      const savedContent = isImgPage(msg)?'':buildContent(buy,msg,cum);
+      const [selFile, setSelFile] = useState(null);
+      const [uploadErr, setUploadErr] = useState('');
+      const [warnings, setWarnings] = useState([]);
+      const [errors, setErrors] = useState([]);
+      const [saving, setSaving] = useState(false);
+      const [saveStatus, setSaveStatus] = useState('');
+      const [saveMsg, setSaveMsg] = useState('');
+      const isGlobal = tabKey==='global';
+
+      const handleFile = e => {
+        const f=e.target.files[0]; setUploadErr('');
+        if (!f) return;
+        if (!['image/jpeg','image/png'].includes(f.type)) { setUploadErr('Error: Invalid file format. Please upload a JPEG or PNG image.'); return; }
+        if (f.size>5*1024*1024) { setUploadErr('Error: File size exceeds 5MB. Please upload a smaller image.'); return; }
+        setSelFile(f);
+      };
+
+      const validate = () => {
+        const errs=[],warns=[];
+        const tmp=document.createElement('div'); tmp.innerHTML=content;
+        const text=tmp.textContent||tmp.innerText||'';
+        if (!text.trim()) errs.push('Error: Message content cannot be empty. Please add content to the template.');
+        placeholders.forEach(p=>{
+          const re=new RegExp(p.value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');
+          if ((text.match(re)||[]).length>1) warns.push(`Warning: The placeholder ${p.name} has been entered more than once in this message. Please check and verify if this is correct`);
+        });
+        if (/\$\{[^}]*$/.test(text)) errs.push('Warning: There are incomplete placeholders in your content. Please correct');
+        const found=text.match(/\$\{[^}]+\}/g)||[];
+        const valid=placeholders.map(p=>p.value);
+        found.forEach(m=>{ if (!valid.includes(m)) errs.push(`Error: Invalid placeholder "${m}" found. Please use only the placeholders from the dropdown.`); });
+        if (msg==='Email subject'&&text.length>200) warns.push('Warning: Email subject is very long. Consider keeping it under 200 characters for better readability.');
+        if ((msg==='Email body'||msg==='SMS body')&&!text.includes('${cardLink}')) warns.push('Warning: The ${cardLink} placeholder is missing. Recipients may not be able to redeem their gift card.');
+        setErrors(errs); setWarnings(warns);
+        return errs.length===0;
+      };
+
+      const handleSave = async () => {
+        if (isImgPage(msg)&&!selFile) { setUploadErr('Error: Please upload an image before saving.'); return; }
+        if (!isImgPage(msg)&&!validate()) return;
+        setSaving(true); setSaveStatus(''); setSaveMsg('');
+        await new Promise(r=>setTimeout(r,1200));
+        const ok=Math.random()>0.1;
+        setSaveStatus(ok?'success':'error');
+        setSaveMsg(ok?(isGlobal?'✓ Global template saved successfully!':'✓ Configuration-specific template saved successfully!'):'✕ Failed to save template. Please try again.');
+        setSaving(false);
+        if (ok) setTimeout(()=>{setSaveStatus('');setSaveMsg('');},5000);
+      };
+
+      const saveDisabled = saving||errors.length>0||(isImgPage(msg)&&!selFile);
+
+      return (
+        <div style={{backgroundColor:'white',borderRadius:'8px',border:'1px solid #e0e0e0',padding:'22px'}}>
+          <h3 style={{fontSize:'15px',fontWeight:'500',color:'#2a303d',marginBottom:'16px',marginTop:0}}>Message editor</h3>
+          {!isImgPage(msg) ? (
+            <MessageEditor value={content} onChange={v=>{setContent(v);setErrors([]);setWarnings([]);}}
+              placeholders={placeholders} showImageOption={msg==='Email body'||msg==='Email signature'}/>
+          ) : (
+            <div>
+              <div style={{border:'2px dashed #d0d0d0',borderRadius:'8px',padding:'44px',textAlign:'center',backgroundColor:'#fafafa'}}>
+                <div style={{fontSize:'44px',marginBottom:'12px'}}>📁</div>
+                <h4 style={{fontSize:'15px',fontWeight:'500',color:'#2a303d',marginBottom:'8px'}}>Upload {msg}</h4>
+                <p style={{fontSize:'13px',color:'#666',marginBottom:'16px',lineHeight:'1.6'}}>Accepted: JPEG, PNG · 210×297mm · Max 5MB</p>
+                <input type="file" accept="image/jpeg,image/png" onChange={handleFile} style={{display:'none'}} id={`fu-${tabKey}`}/>
+                <label htmlFor={`fu-${tabKey}`} style={{backgroundColor:'#1976d2',color:'white',padding:'9px 22px',borderRadius:'4px',fontSize:'14px',fontWeight:'500',cursor:'pointer',display:'inline-block'}}>Choose File</label>
+                {selFile && <div style={{marginTop:'14px',fontSize:'13px',color:'#4caf50'}}>✓ {selFile.name} ({(selFile.size/1024).toFixed(1)} KB)</div>}
+              </div>
+              {uploadErr && <div style={{marginTop:'10px',padding:'10px 12px',backgroundColor:'#ffebee',border:'1px solid #f44336',borderRadius:'4px',fontSize:'13px',color:'#c62828'}}>{uploadErr}</div>}
+            </div>
+          )}
+          {(errors.length>0||warnings.length>0) && (
+            <div style={{marginTop:'12px'}}>
+              {errors.map((e,i)=><div key={i} style={{padding:'10px 12px',backgroundColor:'#ffebee',border:'1px solid #f44336',borderRadius:'4px',marginBottom:'6px',fontSize:'13px',color:'#c62828'}}>{e}</div>)}
+              {warnings.map((w,i)=><div key={i} style={{padding:'10px 12px',backgroundColor:'#fff3cd',border:'1px solid #ffc107',borderRadius:'4px',marginBottom:'6px',fontSize:'13px',color:'#856404'}}>{w}</div>)}
+            </div>
+          )}
+          {saveStatus && (
+            <div style={{marginTop:'10px',padding:'10px 12px',backgroundColor:saveStatus==='success'?'#e8f5e9':'#ffebee',border:`1px solid ${saveStatus==='success'?'#4caf50':'#f44336'}`,borderRadius:'4px',fontSize:'13px',color:saveStatus==='success'?'#2e7d32':'#c62828'}}>
+              {saveMsg}
+            </div>
+          )}
+          <div style={{display:'flex',gap:'10px',marginTop:'18px'}}>
+            <button onClick={handleSave} disabled={saveDisabled} style={btnG(saveDisabled)}>{saving?'SAVING...':'SAVE'}</button>
+            <button onClick={()=>{setContent(savedContent);setErrors([]);setWarnings([]);setSelFile(null);setUploadErr('');setSaveStatus('');setSaveMsg('');onReset();}} style={btnS}>RESET</button>
+            <button onClick={()=>{setSaveStatus('');setSaveMsg('');onCancel();}} style={btnS}>CANCEL</button>
+          </div>
+        </div>
+      );
+    };
+
+    // ── Criteria Form ─────────────────────────────────────────────────────────
+    const CriteriaForm = ({ tabKey, disabled }) => {
+      const [buy, setBuy] = useState('');
+      const [dm, setDm] = useState('');
+      const [dv, setDv] = useState('');
+      const [msg, setMsg] = useState('');
+      const [cum, setCum] = useState('');
+      const [locale, setLocale] = useState('');
+      const [showEditor, setShowEditor] = useState(false);
+      const reset = () => { setBuy('');setDm('');setDv('');setMsg('');setCum('');setLocale('');setShowEditor(false); };
+      const phs = getPlaceholders(buy,msg,cum);
+      const ok = canSearch(buy,dm,dv,msg,locale,cum,dm);
+
+      return (
+        <div style={{display:'flex',flexDirection:'column',gap:'18px'}}>
+          <div style={{backgroundColor:'white',borderRadius:'8px',border:'1px solid #e0e0e0',padding:'22px'}}>
+            <h3 style={{fontSize:'15px',fontWeight:'500',color:'#2a303d',marginBottom:'18px',marginTop:0}}>Select Template Criteria</h3>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'14px',marginBottom:'18px'}}>
+              <Sel label="Buying options" value={buy} onChange={v=>{setBuy(v);setDm('');setDv('');setMsg('');setCum('');setLocale('');setShowEditor(false);}} options={['Self','Gifting']} disabled={disabled}/>
+              <Sel label="Delivery mode" value={dm} onChange={v=>{setDm(v);setDv('');setMsg('');setCum('');setLocale('');setShowEditor(false);}} options={deliveryModes(buy)} disabled={disabled||!buy}/>
+              <Sel label="Deliverable" value={dv} onChange={v=>{setDv(v);setMsg('');setCum('');setLocale('');setShowEditor(false);}} options={deliverables(dm)} disabled={disabled||!dm}/>
+              <Sel label="Message element" value={msg} onChange={v=>{setMsg(v);setCum('');setLocale('');setShowEditor(false);}} options={msgElements(dv,dm)} disabled={disabled||!dv}/>
+              <Sel label="Custom user message" value={cum} onChange={v=>{setCum(v);setLocale('');setShowEditor(false);}} options={cumOpts(msg,dm)} disabled={disabled||!msg||!needsCum(msg,dm)}/>
+              <Sel label="Locale" value={locale} onChange={setLocale} options={getLocales(msg,dm,cum)} disabled={disabled||!msg||(needsCum(msg,dm)&&!cum)}/>
+            </div>
+            <div style={{display:'flex',gap:'10px'}}>
+              <button onClick={()=>setShowEditor(true)} disabled={!ok} style={btnP(!ok)}>SEARCH</button>
+              <button onClick={reset} style={btnS}>RESET</button>
+            </div>
+          </div>
+          {showEditor && (
+            <EditorPanel key={`${buy}-${dm}-${dv}-${msg}-${cum}-${locale}`}
+              buy={buy} msg={msg} mode={dm} cum={cum} placeholders={phs} tabKey={tabKey}
+              onReset={()=>{}} onCancel={()=>setShowEditor(false)}/>
+          )}
+        </div>
+      );
+    };
+
+    // ── Config Tab ────────────────────────────────────────────────────────────
+    const ConfigTab = () => {
+      const [ref, setRef] = useState('');
+      const [searching, setSearching] = useState(false);
+      const [searched, setSearched] = useState(false);
+      const [searchErr, setSearchErr] = useState('');
+
+      const handleSearch = async () => {
+        if (!ref.trim()) { setSearchErr('Please enter a sales configuration reference'); return; }
+        setSearching(true); setSearchErr('');
+        await new Promise(r=>setTimeout(r,900));
+        if (Math.random()>0.3) { setSearched(true); }
+        else { setSearchErr('No templates found for this sales configuration. Please check the UUID and try again.'); setSearched(false); }
+        setSearching(false);
+      };
+
+      return (
+        <div style={{display:'flex',flexDirection:'column',gap:'18px'}}>
+          <div style={{backgroundColor:'white',borderRadius:'8px',border:'1px solid #e0e0e0',padding:'22px'}}>
+            <h3 style={{fontSize:'15px',fontWeight:'500',color:'#2a303d',marginBottom:'18px',marginTop:0}}>Select Template Criteria</h3>
+            <div style={{marginBottom:'18px'}}>
+              <label style={{display:'block',fontSize:'13px',color:'#666',marginBottom:'6px'}}>Sales configuration reference</label>
+              <div style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
+                <input type="text" value={ref}
+                  onChange={e=>{setRef(e.target.value);setSearched(false);setSearchErr('');}}
+                  placeholder="Enter sales config UUID" disabled={searching}
+                  style={{flex:1,padding:'8px 12px',border:'1px solid #d0d0d0',borderRadius:'4px',fontSize:'14px',backgroundColor:searching?'#f5f5f5':'white'}}/>
+                <button onClick={handleSearch} disabled={!ref.trim()||searching} style={btnP(!ref.trim()||searching)}>
+                  {searching?'SEARCHING...':'SEARCH'}
+                </button>
+              </div>
+              {searchErr && <div style={{marginTop:'8px',padding:'10px 12px',backgroundColor:'#ffebee',border:'1px solid #f44336',borderRadius:'4px',fontSize:'13px',color:'#c62828'}}>{searchErr}</div>}
+              {searched && !searchErr && <div style={{marginTop:'8px',padding:'10px 12px',backgroundColor:'#e8f5e9',border:'1px solid #4caf50',borderRadius:'4px',fontSize:'13px',color:'#2e7d32'}}>✓ Configuration templates found. Select criteria below to edit a template.</div>}
+            </div>
+            <CriteriaForm tabKey="config" disabled={!searched} key={ref+String(searched)}/>
+          </div>
+        </div>
+      );
+    };
+
+    // ── App ───────────────────────────────────────────────────────────────────
+    const sideItems = ['Sales links','Approve Orders','Card','Code','Code Batch','Code Pool','Orders','Fraud Regex Rules','Program','Abnormal Purchase','Deliveries','Template Management'];
+
+    function App() {
+      const [tab, setTab] = useState('global');
+      return (
+        <div style={{display:'flex',height:'100vh',backgroundColor:'#f5f5f5',overflow:'hidden'}}>
+          <div style={{width:'215px',backgroundColor:'#3d1639',display:'flex',flexDirection:'column',flexShrink:0}}>
+            <div style={{padding:'13px 15px',backgroundColor:'white'}}><GiftedLogo/></div>
+            <nav style={{flex:1,overflowY:'auto'}}>
+              {sideItems.map((item,i)=>(
+                <div key={i} style={{padding:'11px 16px',cursor:'pointer',display:'flex',alignItems:'center',gap:'10px',backgroundColor:item==='Template Management'?'#4f0942':'transparent',color:item==='Template Management'?'white':'rgba(255,255,255,0.82)'}}>
+                  <NavIcon/><span style={{fontSize:'13px'}}>{item}</span>
+                </div>
+              ))}
+            </nav>
+            <div style={{padding:'13px',borderTop:'1px solid rgba(255,255,255,0.1)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:'10px',padding:'6px',cursor:'pointer'}}>
+                <div style={{width:'34px',height:'34px',borderRadius:'50%',backgroundColor:'#ff534a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'13px',fontWeight:'600',color:'white',flexShrink:0}}>S</div>
+                <div style={{fontSize:'12px',color:'white'}}>
+                  <div style={{fontWeight:'500'}}>Suchintha</div>
+                  <div style={{opacity:0.7}}>Maddumaarachchi</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            <div style={{backgroundColor:'white',borderBottom:'1px solid #e0e0e0',padding:'18px 26px',flexShrink:0}}>
+              <h1 style={{fontSize:'22px',fontWeight:'400',color:'#2a303d',margin:0}}>Template Management</h1>
+            </div>
+            <div style={{backgroundColor:'white',borderBottom:'1px solid #e0e0e0',padding:'0 26px',flexShrink:0}}>
+              <div style={{display:'flex',gap:'28px'}}>
+                {[['global','Global templates'],['config','Configuration specific templates']].map(([k,label])=>(
+                  <button key={k} onClick={()=>setTab(k)}
+                    style={{padding:'13px 4px',fontWeight:'500',fontSize:'14px',border:'none',background:'none',cursor:'pointer',color:tab===k?'#4f0942':'#666',borderBottom:tab===k?'2px solid #4f0942':'2px solid transparent'}}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div style={{flex:1,overflowY:'auto',padding:'26px'}}>
+              {tab==='global' && <CriteriaForm tabKey="global" disabled={false} key="global-form"/>}
+              {tab==='config' && <ConfigTab key="config-tab"/>}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+  </script>
+</body>
+</html>
