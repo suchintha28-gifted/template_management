@@ -588,7 +588,7 @@ const GlobalEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, store, o
             onChange={handleChange} 
             placeholders={placeholders}
             showImageOption={msg==='Email body'||msg==='Email signature'}
-            showPlaceholderBar={isDefault}
+            showPlaceholderBar={true}
             extraToolbar={null}/>
       }
       
@@ -976,6 +976,7 @@ const ConfigTab = () => {
     </div>
   );
 };
+
 
 /* ─── App Shell ───────────────────────────────────────────────────────────── */
 const sideItems=['Sales links','Approve Orders','Card','Code','Code Batch','Code Pool','Orders','Fraud Regex Rules','Program','Abnormal Purchase','Deliveries','Template Management'];
