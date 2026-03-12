@@ -21,6 +21,7 @@
   
   <script type="text/babel">
  const { useState, useRef, useEffect, useCallback } = React; 
+
 /* ─── Brand ───────────────────────────────────────────────────────────────── */
 const GiftedLogo = () => (
   <svg viewBox="0 0 710 220" style={{height:'32px'}}>
@@ -42,27 +43,102 @@ const NavIcon = () => (
   </svg>
 );
 
-/* ─── Constants ───────────────────────────────────────────────────────────── */
+/* ─── Constants & Config ──────────────────────────────────────────────────── */
 const ALL_LOCALES = ['English','Swedish','Danish','German','Norwegian','Spanish'];
-const CONFIG_DEFAULTS = {
-  '5206c038-c714-4442-839e-5c5e12c55ae6': 'Swedish',
-  'default': 'English',
+const GLOBAL_DEFAULT_LOCALE = 'English';
+
+const MOCK_CONFIGS = {
+  '5206c038-c714-4442-839e-5c5e12c55ae6': {
+    defaultLocale: 'Swedish',
+    name: 'Swedish Gift Card Program',
+    available: {
+      buyingOptions: ['Self', 'Gifting'],
+      deliveryModes: { Self: ['Email', 'SMS'], Gifting: ['Email', 'SMS', 'Postcard'] },
+      deliverables: { Email: ['DIGITAL_PDF', 'EXCEL'], SMS: ['PLAIN_TEXT'], Postcard: ['PRINTED_PDF'] }
+    },
+    customTemplates: {
+      'Self|Email|DIGITAL_PDF|Email body|No': true,
+      'Self|Email|DIGITAL_PDF|Email subject|-': true,
+      'Gifting|SMS|PLAIN_TEXT|SMS body|Yes': true,
+    }
+  },
+  'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee': {
+    defaultLocale: 'English',
+    name: 'Full Featured Program',
+    available: {
+      buyingOptions: ['Self', 'Gifting'],
+      deliveryModes: { Self: ['Email', 'SMS', 'Instant Download'], Gifting: ['Email', 'SMS', 'Postcard', 'Instant Download'] },
+      deliverables: { Email: ['DIGITAL_PDF', 'EXCEL', 'PLAIN_TEXT'], SMS: ['PLAIN_TEXT'], Postcard: ['PRINTED_PDF'], 'Instant Download': ['DIGITAL_PDF_ZIP'] }
+    },
+    customTemplates: {
+      'Self|Email|DIGITAL_PDF|Email body|No': true,
+      'Self|Email|DIGITAL_PDF|Email subject|-': true,
+      'Self|Email|DIGITAL_PDF|Email signature|-': true,
+      'Self|Email|DIGITAL_PDF|PDF first page|-': true,
+      'Gifting|Postcard|PRINTED_PDF|Postcard first page|-': true,
+    }
+  },
+  'happy-path-uuid-1234-5678-9012-345678901234': {
+    defaultLocale: 'English',
+    name: 'Happy Path Complete Configuration',
+    available: {
+      buyingOptions: ['Self', 'Gifting'],
+      deliveryModes: { Self: ['Email', 'SMS', 'Instant Download'], Gifting: ['Email', 'SMS', 'Postcard', 'Instant Download'] },
+      deliverables: { Email: ['DIGITAL_PDF', 'EXCEL', 'PLAIN_TEXT'], SMS: ['PLAIN_TEXT'], Postcard: ['PRINTED_PDF'], 'Instant Download': ['DIGITAL_PDF_ZIP'] }
+    },
+    customTemplates: {}
+  },
+  'no-templates-1111-2222-3333-444444444444': {
+    defaultLocale: 'English',
+    name: 'Empty Configuration (No Custom Templates)',
+    available: {
+      buyingOptions: ['Self'],
+      deliveryModes: { Self: ['Email', 'SMS'] },
+      deliverables: { Email: ['DIGITAL_PDF', 'PLAIN_TEXT'], SMS: ['PLAIN_TEXT'] }
+    },
+    customTemplates: {}
+  },
+  'limited-config-aaaa-bbbb-cccc-dddddddddddd': {
+    defaultLocale: 'English',
+    name: 'Gifting-Only Postcard Configuration',
+    available: {
+      buyingOptions: ['Gifting'],
+      deliveryModes: { Gifting: ['Email', 'Postcard'] },
+      deliverables: { Email: ['DIGITAL_PDF', 'EXCEL'], Postcard: ['PRINTED_PDF'] }
+    },
+    customTemplates: {
+      'Gifting|Postcard|PRINTED_PDF|Postcard first page|-': true,
+      'Gifting|Email|DIGITAL_PDF|Email body|Yes': true,
+    }
+  },
+  'translation-test-1111-2222-3333-444444444444': {
+    defaultLocale: 'Danish',
+    name: 'Danish Default Locale Configuration',
+    available: {
+      buyingOptions: ['Self', 'Gifting'],
+      deliveryModes: { Self: ['Email', 'SMS'], Gifting: ['Email', 'SMS', 'Postcard'] },
+      deliverables: { Email: ['DIGITAL_PDF', 'EXCEL'], SMS: ['PLAIN_TEXT'], Postcard: ['PRINTED_PDF'] }
+    },
+    customTemplates: {
+      'Self|Email|DIGITAL_PDF|Email body|No': true,
+      'Gifting|Email|DIGITAL_PDF|Email subject|-': true,
+    }
+  }
 };
 
+/* ─── Utilities ───────────────────────────────────────────────────────────── */
 const isValidS3Url = u => [
   /^https:\/\/[a-z0-9.\-]+\.s3\.amazonaws\.com\/.+/i,
   /^https:\/\/s3\.[a-z0-9\-]+\.amazonaws\.com\/.+/i,
   /^https:\/\/s3\.amazonaws\.com\/.+/i,
 ].some(p => p.test((u||'').trim()));
 
-/* ─── Placeholder helpers ─────────────────────────────────────────────────── */
 const extractPlaceholders = html => {
   const tmp = document.createElement('div');
   tmp.innerHTML = html;
   return [...new Set((tmp.textContent.match(/\$\{[^}]+\}/g) || []))].sort();
 };
 
-/* ─── AI Translation ──────────────────────────────────────────────────────── */
 const translateHTML = async (html, src, tgt) => {
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method:'POST', headers:{'Content-Type':'application/json'},
@@ -83,6 +159,64 @@ RULES:
   const d = await r.json();
   return (d?.content?.find(b=>b.type==='text')?.text||'').trim();
 };
+
+/* ─── Data Helpers ────────────────────────────────────────────────────────── */
+const deliveryModes = b => !b?[]:b==='Self'?['SMS','Email','Instant Download']:['SMS','Email','Postcard','Instant Download'];
+const deliverables  = m => ({SMS:['PLAIN_TEXT'],Email:['DIGITAL_PDF','EXCEL','PLAIN_TEXT'],Postcard:['PRINTED_PDF'],'Instant Download':['DIGITAL_PDF_ZIP']}[m]||[]);
+const msgElements   = (dv,m) => {
+  if(!dv) return [];
+  if(dv==='PLAIN_TEXT'&&m==='SMS') return ['SMS body'];
+  if(dv==='DIGITAL_PDF') return ['PDF first page','Email subject','Email body','Email signature'];
+  if(dv==='EXCEL'||(dv==='PLAIN_TEXT'&&m==='Email')) return ['Email subject','Email body','Email signature'];
+  if(dv==='PRINTED_PDF') return ['Postcard first page'];
+  if(dv==='DIGITAL_PDF_ZIP') return ['PDF first page'];
+  return [];
+};
+const cumConfig = (msg,mode) => {
+  if(!msg) return null;
+  if((msg==='SMS body'&&mode==='SMS')||msg==='Email body') return ['Yes','No'];
+  if(['PDF first page','Postcard first page','Email subject','Email signature'].includes(msg)) return 'dash';
+  return null;
+};
+const getPHs = (buy,msg,cum) => {
+  if(['PDF first page','Postcard first page','Email signature'].includes(msg)) return [];
+  const base=[{name:'Recipient name',value:'${recipientName}'},{name:'Card program',value:'${brandName}'},{name:'Card link',value:'${cardLink}'}];
+  if(buy==='Gifting') base.splice(1,0,{name:'Sender name',value:'${senderName}'});
+  if(cum==='Yes') base.push({name:'Custom text',value:'${customText}'});
+  return base;
+};
+const isFirstPage = msg=>['PDF first page','Postcard first page'].includes(msg);
+const buildDefault = (buy,msg,cum) => {
+  const s=buy==='Self';
+  if(msg==='Email subject') return s?'Your ${brandName} Gift Card':'Your ${brandName} Gift Card from ${senderName}';
+  if(msg==='Email body'){
+    if(cum==='Yes') return s?'Hi ${recipientName},\n\n${customText}\n\nYour ${brandName} gift card is ready. Redeem:\n${cardLink}\n\nEnjoy!':'Hi ${recipientName},\n\n${senderName} sent you a gift card!\n\n${customText}\n\nYour ${brandName} gift card is ready:\n${cardLink}\n\nEnjoy!';
+    return s?'Hi ${recipientName},\n\nYour ${brandName} gift card is ready. Redeem:\n${cardLink}\n\nEnjoy!':'Hi ${recipientName},\n\n${senderName} sent you a ${brandName} gift card!\n\nRedeem:\n${cardLink}\n\nEnjoy!';
+  }
+  if(msg==='Email signature') return 'Best regards,\nThe Gifted Team';
+  if(msg==='SMS body'){
+    if(cum==='Yes') return s?'Hi ${recipientName}! Your ${brandName} gift card is ready. ${customText} Redeem: ${cardLink}':'Hi ${recipientName}! ${senderName} sent you a ${brandName} gift card. ${customText} Redeem: ${cardLink}';
+    return s?'Hi ${recipientName}! Your ${brandName} gift card is ready. Redeem: ${cardLink}':'Hi ${recipientName}! ${senderName} sent you a ${brandName} gift card. Redeem: ${cardLink}';
+  }
+  return '';
+};
+const makeKey = (...args)=>args.join('|');
+
+/* ─── UI Components ───────────────────────────────────────────────────────── */
+const Sel = ({label,value,onChange,options,disabled}) => (
+  <div>
+    <label style={{display:'block',fontSize:'13px',color:'#666',marginBottom:'6px'}}>{label}</label>
+    <select value={value} onChange={e=>onChange(e.target.value)} disabled={disabled}
+      style={{width:'100%',padding:'8px 12px',border:'1px solid #d0d0d0',borderRadius:'4px',fontSize:'14px',backgroundColor:disabled?'#f5f5f5':'white',cursor:disabled?'not-allowed':'pointer'}}>
+      <option value="">Select a value</option>
+      {options.map(o=><option key={o} value={o}>{o}</option>)}
+    </select>
+  </div>
+);
+
+const btnP=d=>({backgroundColor:d?'#ccc':'#1976d2',color:d?'#888':'white',padding:'9px 22px',borderRadius:'4px',fontSize:'14px',fontWeight:'500',border:'none',cursor:d?'not-allowed':'pointer'});
+const btnS={backgroundColor:'white',color:'#444',padding:'9px 22px',borderRadius:'4px',fontSize:'14px',fontWeight:'500',border:'1px solid #d0d0d0',cursor:'pointer'};
+const btnG=d=>({backgroundColor:d?'#ccc':'#4caf50',color:d?'#888':'white',padding:'9px 22px',borderRadius:'4px',fontSize:'14px',fontWeight:'500',border:'none',cursor:d?'not-allowed':'pointer'});
 
 /* ─── Auto-Translate Modal ────────────────────────────────────────────────── */
 const AutoTranslateModal = ({ sourceLocale, htmlContent, targetLocales, onApply, onClose }) => {
@@ -205,7 +339,7 @@ const AutoTranslateModal = ({ sourceLocale, htmlContent, targetLocales, onApply,
                   onApply(out);
                 }} disabled={applyDisabled}
                   style={{padding:'9px 20px',border:'none',borderRadius:'4px',backgroundColor:applyDisabled?'#ccc':'#4caf50',color:applyDisabled?'#888':'white',cursor:applyDisabled?'not-allowed':'pointer',fontSize:'13px',fontWeight:'600'}}>
-                  ✓ Apply All ({successCount}){applyDisabled?` — fix ${blockedCount} error${blockedCount>1?'s':''}  first`:''}
+                  ✓ Apply All ({successCount}){applyDisabled?` — fix ${blockedCount} error${blockedCount>1?'s':''} first`:''}
                 </button>
               );
             })()}
@@ -376,64 +510,7 @@ const RichEditor = ({ value, onChange, placeholders, showImageOption, showPlaceh
   );
 };
 
-/* ─── Data helpers ────────────────────────────────────────────────────────── */
-const deliveryModes = b => !b?[]:b==='Self'?['SMS','Email','Instant Download']:['SMS','Email','Postcard','Instant Download'];
-const deliverables  = m => ({SMS:['PLAIN_TEXT'],Email:['DIGITAL_PDF','EXCEL','PLAIN_TEXT'],Postcard:['PRINTED_PDF'],'Instant Download':['DIGITAL_PDF_ZIP']}[m]||[]);
-const msgElements   = (dv,m) => {
-  if(!dv) return [];
-  if(dv==='PLAIN_TEXT'&&m==='SMS') return ['SMS body'];
-  if(dv==='DIGITAL_PDF') return ['PDF first page','Email subject','Email body','Email signature'];
-  if(dv==='EXCEL'||(dv==='PLAIN_TEXT'&&m==='Email')) return ['Email subject','Email body','Email signature'];
-  if(dv==='PRINTED_PDF') return ['Postcard first page'];
-  if(dv==='DIGITAL_PDF_ZIP') return ['PDF first page'];
-  return [];
-};
-const cumConfig = (msg,mode) => {
-  if(!msg) return null;
-  if((msg==='SMS body'&&mode==='SMS')||msg==='Email body') return ['Yes','No'];
-  if(['PDF first page','Postcard first page','Email subject','Email signature'].includes(msg)) return 'dash';
-  return null;
-};
-const getPHs = (buy,msg,cum) => {
-  if(['PDF first page','Postcard first page','Email signature'].includes(msg)) return [];
-  const base=[{name:'Recipient name',value:'${recipientName}'},{name:'Card program',value:'${brandName}'},{name:'Card link',value:'${cardLink}'}];
-  if(buy==='Gifting') base.splice(1,0,{name:'Sender name',value:'${senderName}'});
-  if(cum==='Yes') base.push({name:'Custom text',value:'${customText}'});
-  return base;
-};
-const isFirstPage = msg=>['PDF first page','Postcard first page'].includes(msg);
-const buildDefault = (buy,msg,cum) => {
-  const s=buy==='Self';
-  if(msg==='Email subject') return s?'Your ${brandName} Gift Card':'Your ${brandName} Gift Card from ${senderName}';
-  if(msg==='Email body'){
-    if(cum==='Yes') return s?'Hi ${recipientName},\n\n${customText}\n\nYour ${brandName} gift card is ready. Redeem:\n${cardLink}\n\nEnjoy!':'Hi ${recipientName},\n\n${senderName} sent you a gift card!\n\n${customText}\n\nYour ${brandName} gift card is ready:\n${cardLink}\n\nEnjoy!';
-    return s?'Hi ${recipientName},\n\nYour ${brandName} gift card is ready. Redeem:\n${cardLink}\n\nEnjoy!':'Hi ${recipientName},\n\n${senderName} sent you a ${brandName} gift card!\n\nRedeem:\n${cardLink}\n\nEnjoy!';
-  }
-  if(msg==='Email signature') return 'Best regards,\nThe Gifted Team';
-  if(msg==='SMS body'){
-    if(cum==='Yes') return s?'Hi ${recipientName}! Your ${brandName} gift card is ready. ${customText} Redeem: ${cardLink}':'Hi ${recipientName}! ${senderName} sent you a ${brandName} gift card. ${customText} Redeem: ${cardLink}';
-    return s?'Hi ${recipientName}! Your ${brandName} gift card is ready. Redeem: ${cardLink}':'Hi ${recipientName}! ${senderName} sent you a ${brandName} gift card. Redeem: ${cardLink}';
-  }
-  return '';
-};
-const makeKey = (buy,dm,dv,msg,cum,locale)=>[buy,dm,dv,msg,cum,locale].join('|');
-
-const Sel = ({label,value,onChange,options,disabled}) => (
-  <div>
-    <label style={{display:'block',fontSize:'13px',color:'#666',marginBottom:'6px'}}>{label}</label>
-    <select value={value} onChange={e=>onChange(e.target.value)} disabled={disabled}
-      style={{width:'100%',padding:'8px 12px',border:'1px solid #d0d0d0',borderRadius:'4px',fontSize:'14px',backgroundColor:disabled?'#f5f5f5':'white',cursor:disabled?'not-allowed':'pointer'}}>
-      <option value="">Select a value</option>
-      {options.map(o=><option key={o} value={o}>{o}</option>)}
-    </select>
-  </div>
-);
-
-const btnP=d=>({backgroundColor:d?'#ccc':'#1976d2',color:d?'#888':'white',padding:'9px 22px',borderRadius:'4px',fontSize:'14px',fontWeight:'500',border:'none',cursor:d?'not-allowed':'pointer'});
-const btnS={backgroundColor:'white',color:'#444',padding:'9px 22px',borderRadius:'4px',fontSize:'14px',fontWeight:'500',border:'1px solid #d0d0d0',cursor:'pointer'};
-const btnG=d=>({backgroundColor:d?'#ccc':'#4caf50',color:d?'#888':'white',padding:'9px 22px',borderRadius:'4px',fontSize:'14px',fontWeight:'500',border:'none',cursor:d?'not-allowed':'pointer'});
-
-/* ─── File upload block ───────────────────────────────────────────────────── */
+/* ─── File Upload ─────────────────────────────────────────────────────────── */
 const FileUpload = ({ id, selFile, onFile, uploadErr }) => (
   <div>
     <div style={{border:'2px dashed #d0d0d0',borderRadius:'8px',padding:'40px',textAlign:'center',backgroundColor:'#fafafa'}}>
@@ -447,192 +524,20 @@ const FileUpload = ({ id, selFile, onFile, uploadErr }) => (
   </div>
 );
 
-/* ─── Global Editor Panel ─────────────────────────────────────────────────── */
-const GLOBAL_DEFAULT_LOCALE = 'English';
-
-const GlobalEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, store, onStoreUpdate, onCancel }) => {
-  const isDefault = locale === GLOBAL_DEFAULT_LOCALE;
-  const realKey    = makeKey(buy,mode,msg,msg,cum,locale);
-  const defaultKey = makeKey(buy,mode,msg,msg,cum,GLOBAL_DEFAULT_LOCALE);
+/* ─── Editor Panel (Shared) ───────────────────────────────────────────────── */
+const EditorPanel = ({ isGlobal, buy, msg, mode, cum, placeholders, locale, defaultLocale, store, onStoreUpdate, onCancel }) => {
+  const defLoc = isGlobal ? GLOBAL_DEFAULT_LOCALE : defaultLocale;
+  const isDefault = locale === defLoc;
+  const realKey = makeKey(buy,mode,msg,msg,cum,locale);
+  const defaultKey = makeKey(buy,mode,msg,msg,cum,defLoc);
+  const phsKey = isGlobal ? '__g_savedPHs__'+defaultKey : '__savedPHs__'+defaultKey;
+  const changeKey = isGlobal ? '__g_phsChanged__' : '__phsChanged__';
 
   const init = store[realKey] ?? (isFirstPage(msg)?'':buildDefault(buy,msg,cum));
   const [content,setContent]=useState(init);
   const [lastSaved,setLastSaved]=useState(init);
   const savedDefaultPHs = useRef(
-    store['__g_savedPHs__'+defaultKey]
-      ? JSON.parse(store['__g_savedPHs__'+defaultKey])
-      : extractPlaceholders(store[defaultKey] || buildDefault(buy,msg,cum==='-'?'':cum))
-  );
-  const [selFile,setSelFile]=useState(null);
-  const [uploadErr,setUploadErr]=useState('');
-  const [errors,setErrors]=useState([]);
-  const [warnings,setWarnings]=useState([]);
-  const [saving,setSaving]=useState(false);
-  const [saveStatus,setSaveStatus]=useState('');
-  const [saveMsg,setSaveMsg]=useState('');
-
-  const handleChange = v => {
-    setContent(v); 
-    onStoreUpdate(realKey,v); 
-    setErrors([]); 
-    setWarnings([]);
-    if (isDefault) {
-      const cur = extractPlaceholders(v);
-      const changed = JSON.stringify(savedDefaultPHs.current.sort()) !== JSON.stringify(cur.sort());
-      onStoreUpdate('__g_phsChanged__', changed ? '1' : '');
-    }
-  };
-
-  const validate = () => {
-    const errs=[],warns=[];
-    const tmp=document.createElement('div'); 
-    tmp.innerHTML=content;
-    const text=tmp.textContent||'';
-    
-    if(!text.trim()) errs.push('Message content cannot be empty.');
-    if(/\$\{[^}]*$/.test(text)) errs.push('There are incomplete placeholders in your content. Please correct before saving.');
-
-    if (isDefault) {
-      const found=text.match(/\$\{[^}]+\}/g)||[];
-      const valid=placeholders.map(p=>p.value);
-      found.forEach(m=>{if(!valid.includes(m)) errs.push(`Invalid placeholder "${m}" found.`);});
-      placeholders.forEach(p=>{
-        const re=new RegExp(p.value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g');
-        if((text.match(re)||[]).length>1) warns.push(`Placeholder ${p.name} is used more than once.`);
-      });
-      if(msg==='Email subject'&&text.length>200) warns.push('Email subject exceeds 200 characters.');
-      if((msg==='Email body'||msg==='SMS body')&&!text.includes('${cardLink}')) warns.push('${cardLink} placeholder is missing.');
-      
-      const curPHs = extractPlaceholders(content);
-      const changed = JSON.stringify(savedDefaultPHs.current.sort()) !== JSON.stringify(curPHs.sort());
-      if (changed) errs.push(`Placeholders in ${GLOBAL_DEFAULT_LOCALE} (default language) have changed. Update all other locale templates manually before saving.`);
-    } else {
-      const defContent = store[defaultKey] || buildDefault(buy,msg,cum==='-'?'':cum);
-      const defPHs = extractPlaceholders(defContent);
-      const myPHs  = extractPlaceholders(content);
-      const missing = defPHs.filter(p=>!myPHs.includes(p));
-      if(missing.length) errs.push(`The following placeholder(s) from ${GLOBAL_DEFAULT_LOCALE} (default language) are missing in this locale: ${missing.join(', ')}.`);
-    }
-
-    setErrors(errs); 
-    setWarnings(warns);
-    return errs.length===0;
-  };
-
-  const handleSave = async () => {
-    if(isFirstPage(msg)){
-      if(!selFile){
-        setUploadErr('Please upload an image before saving.');
-        return;
-      }
-    } else {
-      if(!validate()) return;
-    }
-    
-    setSaving(true); 
-    setSaveStatus(''); 
-    setSaveMsg('');
-    await new Promise(r=>setTimeout(r,1200));
-    const ok=Math.random()>0.1;
-    
-    if(ok){
-      setSaveStatus('success');
-      setSaveMsg('✓ Global template saved successfully!');
-      setLastSaved(content);
-      if(isDefault){
-        savedDefaultPHs.current = extractPlaceholders(content);
-        onStoreUpdate('__g_savedPHs__'+defaultKey, JSON.stringify(savedDefaultPHs.current));
-        onStoreUpdate('__g_phsChanged__','');
-      }
-      setTimeout(()=>{setSaveStatus('');setSaveMsg('');},5000);
-    } else {
-      setSaveStatus('error');
-      setSaveMsg('✕ Failed to save. Please try again.');
-    }
-    setSaving(false);
-  };
-
-  const hasIncomplete = errors.some(e=>e.startsWith('There are incomplete'));
-  const saveDisabled  = saving||errors.length>0||hasIncomplete;
-  const phsStale      = !isDefault && !!store['__g_phsChanged__'];
-
-  return (
-    <div style={{backgroundColor:'white',borderRadius:'8px',border:'1px solid #e0e0e0',padding:'22px'}}>
-      <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'4px'}}>
-        <h3 style={{fontSize:'15px',fontWeight:'500',color:'#2a303d',margin:0}}>Message editor</h3>
-        {isDefault && <span style={{fontSize:'11px',fontWeight:'600',backgroundColor:'#e8f5e9',color:'#2e7d32',padding:'2px 8px',borderRadius:'10px',border:'1px solid #a5d6a7'}}>Default language</span>}
-      </div>
-      <div style={{fontSize:'12px',color:'#888',marginBottom:'16px'}}>{locale}</div>
-
-      {phsStale && <div style={{marginBottom:'14px',padding:'10px 12px',backgroundColor:'#ffebee',border:'1px solid #f44336',borderRadius:'4px',fontSize:'13px',color:'#c62828'}}>
-        Placeholders in {GLOBAL_DEFAULT_LOCALE} (default language) have changed. Update this locale manually before saving.
-      </div>}
-
-      {isFirstPage(msg)
-        ? <FileUpload id="gu-file" selFile={selFile} uploadErr={uploadErr} onFile={e=>{
-            const f=e.target.files[0];
-            setUploadErr('');
-            if(!f)return;
-            if(!['image/jpeg','image/png'].includes(f.type)){
-              setUploadErr('Invalid file format. Please upload a JPEG or PNG image.');
-              return;
-            }
-            if(f.size>5*1024*1024){
-              setUploadErr('File exceeds 5MB.');
-              return;
-            }
-            setSelFile(f);
-          }}/>
-        : <RichEditor 
-            value={content} 
-            onChange={handleChange} 
-            placeholders={placeholders}
-            showImageOption={msg==='Email body'||msg==='Email signature'}
-            showPlaceholderBar={true}
-            extraToolbar={null}/>
-      }
-      
-      {(errors.length>0||warnings.length>0)&&<div style={{marginTop:'12px'}}>
-        {errors.map((e,i)=><div key={i} style={{padding:'10px 12px',backgroundColor:'#ffebee',border:'1px solid #f44336',borderRadius:'4px',marginBottom:'6px',fontSize:'13px',color:'#c62828'}}>{e}</div>)}
-        {warnings.map((w,i)=><div key={i} style={{padding:'10px 12px',backgroundColor:'#fff3cd',border:'1px solid #ffc107',borderRadius:'4px',marginBottom:'6px',fontSize:'13px',color:'#856404'}}>{w}</div>)}
-      </div>}
-      
-      {saveStatus&&<div style={{marginTop:'10px',padding:'10px 12px',backgroundColor:saveStatus==='success'?'#e8f5e9':'#ffebee',border:`1px solid ${saveStatus==='success'?'#4caf50':'#f44336'}`,borderRadius:'4px',fontSize:'13px',color:saveStatus==='success'?'#2e7d32':'#c62828'}}>{saveMsg}</div>}
-      
-      <div style={{display:'flex',gap:'10px',marginTop:'18px'}}>
-        <button onClick={handleSave} disabled={saveDisabled} style={btnG(saveDisabled)}>
-          {saving?'SAVING...':'SAVE'}
-        </button>
-        <button onClick={()=>{
-          setContent(lastSaved);
-          onStoreUpdate(realKey,lastSaved);
-          setErrors([]);
-          setWarnings([]);
-          setSaveStatus('');
-          setSaveMsg('');
-        }} style={btnS}>RESET</button>
-        <button onClick={()=>{
-          setSaveStatus('');
-          setSaveMsg('');
-          onCancel();
-        }} style={btnS}>CANCEL</button>
-      </div>
-    </div>
-  );
-};
-
-/* ─── Config Editor Panel ─────────────────────────────────────────────────── */
-const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultLocale, store, onStoreUpdate, onCancel }) => {
-  const isDefault = locale===defaultLocale;
-  const realKey   = makeKey(buy,mode,msg,msg,cum,locale);
-  const defaultKey= makeKey(buy,mode,msg,msg,cum,defaultLocale);
-  const init = store[realKey] ?? (isFirstPage(msg)?'':buildDefault(buy,msg,cum));
-  const [content,setContent]=useState(init);
-  const [lastSaved,setLastSaved]=useState(init);
-  const savedDefaultPHs = useRef(
-    store['__savedPHs__'+defaultKey]
-      ? JSON.parse(store['__savedPHs__'+defaultKey])
-      : extractPlaceholders(store[defaultKey]||'')
+    store[phsKey] ? JSON.parse(store[phsKey]) : extractPlaceholders(store[defaultKey] || buildDefault(buy,msg,cum==='-'?'':cum))
   );
   const [showTranslateModal,setShowTranslateModal]=useState(false);
   const [selFile,setSelFile]=useState(null);
@@ -642,7 +547,7 @@ const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultL
   const [saving,setSaving]=useState(false);
   const [saveStatus,setSaveStatus]=useState('');
   const [saveMsg,setSaveMsg]=useState('');
-  const targetLocales = ALL_LOCALES.filter(l=>l!==defaultLocale);
+  const targetLocales = ALL_LOCALES.filter(l=>l!==defLoc);
 
   const handleChange = v => {
     setContent(v); 
@@ -652,7 +557,7 @@ const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultL
     if(isDefault){
       const cur=extractPlaceholders(v);
       const changed=JSON.stringify(savedDefaultPHs.current.sort())!==JSON.stringify(cur.sort());
-      onStoreUpdate('__phsChanged__',changed?'1':'');
+      onStoreUpdate(changeKey,changed?'1':'');
     }
   };
 
@@ -678,13 +583,23 @@ const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultL
       
       const curPHs=extractPlaceholders(content);
       const changed=JSON.stringify(savedDefaultPHs.current.sort())!==JSON.stringify(curPHs.sort());
-      if(changed) errs.push(`Placeholders in ${defaultLocale} (default language) have changed. Generate new translations and approve them before saving.`);
+      if(changed){
+        if(isGlobal) warns.push(`Placeholders in ${defLoc} (default language) have changed. Update all other locale templates to match.`);
+        else errs.push(`Placeholders in ${defLoc} (default language) have changed. Generate new translations and approve them before saving.`);
+      }
     } else {
       const defContent = store[defaultKey] || buildDefault(buy, msg, cum==='-'?'':cum);
       const defPHs = extractPlaceholders(defContent);
       const myPHs  = extractPlaceholders(content);
       const missing = defPHs.filter(p => !myPHs.includes(p));
-      if(missing.length) errs.push(`The following placeholder(s) from ${defaultLocale} (default language) are missing in this locale: ${missing.join(', ')}. Please re-translate or add them manually.`);
+      const extra = myPHs.filter(p=>!defPHs.includes(p));
+      
+      if(isGlobal){
+        if(missing.length) warns.push(`The following placeholder(s) from ${defLoc} (default language) are missing in this locale: ${missing.join(', ')}.`);
+        if(extra.length) warns.push(`The following placeholder(s) are not present in ${defLoc} (default language): ${extra.join(', ')}.`);
+      } else {
+        if(missing.length) errs.push(`The following placeholder(s) from ${defLoc} (default language) are missing in this locale: ${missing.join(', ')}. Please re-translate or add them manually.`);
+      }
     }
     
     setErrors(errs); 
@@ -694,10 +609,7 @@ const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultL
 
   const handleSave = async () => {
     if(isFirstPage(msg)){
-      if(!selFile){
-        setUploadErr('Please upload an image before saving.');
-        return;
-      }
+      if(!selFile){setUploadErr('Please upload an image before saving.');return;}
     } else {
       if(!validate()) return;
     }
@@ -710,12 +622,12 @@ const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultL
     
     if(ok){
       setSaveStatus('success');
-      setSaveMsg('✓ Configuration-specific template saved successfully!');
+      setSaveMsg(isGlobal?'✓ Global template saved successfully!':'✓ Configuration-specific template saved successfully!');
       setLastSaved(content);
       if(isDefault){
         savedDefaultPHs.current=extractPlaceholders(content);
-        onStoreUpdate('__savedPHs__'+defaultKey,JSON.stringify(savedDefaultPHs.current));
-        onStoreUpdate('__phsChanged__','');
+        onStoreUpdate(phsKey,JSON.stringify(savedDefaultPHs.current));
+        onStoreUpdate(changeKey,'');
       }
       setTimeout(()=>{setSaveStatus('');setSaveMsg('');},5000);
     } else {
@@ -728,15 +640,15 @@ const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultL
   const handleApplyTranslations = applied => {
     Object.entries(applied).forEach(([loc,html])=>onStoreUpdate(makeKey(buy,mode,msg,msg,cum,loc),html));
     savedDefaultPHs.current=extractPlaceholders(store[defaultKey]||content);
-    onStoreUpdate('__phsChanged__','');
+    onStoreUpdate(changeKey,'');
     setShowTranslateModal(false);
   };
 
   const hasIncomplete=errors.some(e=>e.startsWith('There are incomplete'));
   const saveDisabled=saving||errors.length>0||hasIncomplete;
-  const phsStale=!isDefault&&!!store['__phsChanged__'];
+  const phsStale=!isDefault&&!!store[changeKey];
 
-  const translateBtn=(
+  const translateBtn = !isGlobal && (
     <>
       <div style={{width:'1px',height:'22px',backgroundColor:'#d0d0d0',marginLeft:'2px'}}/>
       <button onMouseDown={e=>{e.preventDefault();setShowTranslateModal(true);}}
@@ -754,23 +666,20 @@ const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultL
       </div>
       <div style={{fontSize:'12px',color:'#888',marginBottom:'16px'}}>{locale}</div>
 
-      {phsStale&&<div style={{marginBottom:'14px',padding:'10px 12px',backgroundColor:'#ffebee',border:'1px solid #f44336',borderRadius:'4px',fontSize:'13px',color:'#c62828'}}>
-        Placeholders in {defaultLocale} (default language) have changed. Switch to {defaultLocale} and re-translate before editing this locale.
+      {phsStale && <div style={{marginBottom:'14px',padding:'10px 12px',backgroundColor:isGlobal?'#fff3cd':'#ffebee',border:`1px solid ${isGlobal?'#ffc107':'#f44336'}`,borderRadius:'4px',fontSize:'13px',color:isGlobal?'#856404':'#c62828'}}>
+        {isGlobal
+          ? `Placeholders in ${defLoc} (default language) have changed. Update this locale manually.`
+          : `Placeholders in ${defLoc} (default language) have changed. Switch to ${defLoc} and re-translate before editing this locale.`
+        }
       </div>}
 
       {isFirstPage(msg)
-        ? <FileUpload id="cu-file" selFile={selFile} uploadErr={uploadErr} onFile={e=>{
+        ? <FileUpload id={isGlobal?'gu-file':'cu-file'} selFile={selFile} uploadErr={uploadErr} onFile={e=>{
             const f=e.target.files[0];
             setUploadErr('');
             if(!f)return;
-            if(!['image/jpeg','image/png'].includes(f.type)){
-              setUploadErr('Invalid file format. Please upload a JPEG or PNG image.');
-              return;
-            }
-            if(f.size>5*1024*1024){
-              setUploadErr('File exceeds 5MB.');
-              return;
-            }
+            if(!['image/jpeg','image/png'].includes(f.type)){setUploadErr('Invalid file format. Please upload a JPEG or PNG image.');return;}
+            if(f.size>5*1024*1024){setUploadErr('File exceeds 5MB.');return;}
             setSelFile(f);
           }}/>
         : <RichEditor 
@@ -778,10 +687,10 @@ const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultL
             onChange={handleChange} 
             placeholders={placeholders}
             showImageOption={msg==='Email body'||msg==='Email signature'}
-            showPlaceholderBar={isDefault}
+            showPlaceholderBar={isGlobal || isDefault}
             extraToolbar={translateBtn}/>
       }
-
+      
       {(errors.length>0||warnings.length>0)&&<div style={{marginTop:'12px'}}>
         {errors.map((e,i)=><div key={i} style={{padding:'10px 12px',backgroundColor:'#ffebee',border:'1px solid #f44336',borderRadius:'4px',marginBottom:'6px',fontSize:'13px',color:'#c62828'}}>{e}</div>)}
         {warnings.map((w,i)=><div key={i} style={{padding:'10px 12px',backgroundColor:'#fff3cd',border:'1px solid #ffc107',borderRadius:'4px',marginBottom:'6px',fontSize:'13px',color:'#856404'}}>{w}</div>)}
@@ -796,20 +705,13 @@ const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultL
         <button onClick={()=>{
           setContent(lastSaved);
           onStoreUpdate(realKey,lastSaved);
-          setErrors([]);
-          setWarnings([]);
-          setSaveStatus('');
-          setSaveMsg('');
+          setErrors([]);setWarnings([]);setSaveStatus('');setSaveMsg('');
         }} style={btnS}>RESET</button>
-        <button onClick={()=>{
-          setSaveStatus('');
-          setSaveMsg('');
-          onCancel();
-        }} style={btnS}>CANCEL</button>
+        <button onClick={()=>{setSaveStatus('');setSaveMsg('');onCancel();}} style={btnS}>CANCEL</button>
       </div>
 
       {showTranslateModal&&<AutoTranslateModal
-        sourceLocale={isDefault?locale:defaultLocale}
+        sourceLocale={isDefault?locale:defLoc}
         htmlContent={isDefault?content:(store[defaultKey]||content)}
         targetLocales={targetLocales}
         onApply={handleApplyTranslations}
@@ -819,7 +721,7 @@ const ConfigEditorPanel = ({ buy, msg, mode, cum, placeholders, locale, defaultL
 };
 
 /* ─── Criteria Form ───────────────────────────────────────────────────────── */
-const CriteriaForm = ({ isGlobal, disabled, defaultLocale }) => {
+const CriteriaForm = ({ isGlobal, disabled, defaultLocale, configData }) => {
   const [buy,setBuy]=useState(''); 
   const [dm,setDm]=useState(''); 
   const [dv,setDv]=useState('');
@@ -838,6 +740,14 @@ const CriteriaForm = ({ isGlobal, disabled, defaultLocale }) => {
   const resolvedCum=cumIsDash?'-':cum;
   const phs=getPHs(buy,msg,resolvedCum==='-'?'':resolvedCum);
 
+  const templateKey = makeKey(buy,dm,dv,msg,resolvedCum);
+  const templateExists = !isGlobal && configData && configData.customTemplates[templateKey];
+  const buttonText = templateExists ? 'SEARCH' : (isGlobal ? 'SEARCH' : 'CREATE TEMPLATE');
+
+  const getAvailableBuyingOptions = () => isGlobal || !configData ? ['Self','Gifting'] : (configData.available.buyingOptions || []);
+  const getAvailableDeliveryModes = () => isGlobal || !configData ? deliveryModes(buy) : (!buy || !configData.available.deliveryModes[buy] ? [] : configData.available.deliveryModes[buy]);
+  const getAvailableDeliverables = () => isGlobal || !configData ? deliverables(dm) : (!dm || !configData.available.deliverables[dm] ? [] : configData.available.deliverables[dm]);
+
   const resetBelow=field=>{ 
     if(field<=1)setDm(''); 
     if(field<=2)setDv(''); 
@@ -854,9 +764,16 @@ const CriteriaForm = ({ isGlobal, disabled, defaultLocale }) => {
   },[]);
 
   const handleSearch=()=>{
-    if(!store.current[makeKey(buy,dm,dv,msg,resolvedCum,locale)]&&!isFirstPage(msg)) {
-      store.current[makeKey(buy,dm,dv,msg,resolvedCum,locale)]=buildDefault(buy,msg,resolvedCum==='-'?'':resolvedCum);
+    const realKey = makeKey(buy,dm,dv,msg,resolvedCum,locale);
+    
+    if (!isGlobal && !templateExists && configData) {
+      configData.customTemplates[templateKey] = true;
     }
+    
+    if(!store.current[realKey] && !isFirstPage(msg)) {
+      store.current[realKey] = buildDefault(buy,msg,resolvedCum==='-'?'':resolvedCum);
+    }
+    
     setShowEditor(true); 
     forceRender(n=>n+1);
   };
@@ -866,9 +783,9 @@ const CriteriaForm = ({ isGlobal, disabled, defaultLocale }) => {
       <div style={{backgroundColor:'white',borderRadius:'8px',border:'1px solid #e0e0e0',padding:'22px'}}>
         <h3 style={{fontSize:'15px',fontWeight:'500',color:'#2a303d',marginBottom:'18px',marginTop:0}}>Select Template Criteria</h3>
         <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'14px',marginBottom:'18px'}}>
-          <Sel label="Buying options"  value={buy} onChange={v=>{setBuy(v);resetBelow(1);}} options={['Self','Gifting']} disabled={disabled}/>
-          <Sel label="Delivery mode"   value={dm}  onChange={v=>{setDm(v);resetBelow(2);}} options={deliveryModes(buy)} disabled={disabled||!buy}/>
-          <Sel label="Deliverable"     value={dv}  onChange={v=>{setDv(v);resetBelow(3);}} options={deliverables(dm)} disabled={disabled||!dm}/>
+          <Sel label="Buying options"  value={buy} onChange={v=>{setBuy(v);resetBelow(1);}} options={getAvailableBuyingOptions()} disabled={disabled}/>
+          <Sel label="Delivery mode"   value={dm}  onChange={v=>{setDm(v);resetBelow(2);}} options={getAvailableDeliveryModes()} disabled={disabled||!buy}/>
+          <Sel label="Deliverable"     value={dv}  onChange={v=>{setDv(v);resetBelow(3);}} options={getAvailableDeliverables()} disabled={disabled||!dm}/>
           <Sel label="Message element" value={msg} onChange={v=>{setMsg(v);resetBelow(4);}} options={msgElements(dv,dm)} disabled={disabled||!dv}/>
           <div>
             <label style={{display:'block',fontSize:'13px',color:'#666',marginBottom:'6px'}}>Custom user message</label>
@@ -883,46 +800,29 @@ const CriteriaForm = ({ isGlobal, disabled, defaultLocale }) => {
           </div>
           <Sel label="Locale" value={locale} onChange={v=>{setLocale(v);setShowEditor(false);}} options={localeUnlocked?ALL_LOCALES:[]} disabled={disabled||!localeUnlocked}/>
         </div>
-        <div style={{display:'flex',gap:'10px'}}>
-          <button onClick={handleSearch} disabled={!allChosen} style={btnP(!allChosen)}>SEARCH</button>
+        <div style={{display:'flex',gap:'10px',alignItems:'center'}}>
+          <button onClick={handleSearch} disabled={!allChosen} style={btnP(!allChosen)}>
+            {buttonText}
+          </button>
           <button onClick={()=>{
-            setBuy('');
-            setDm('');
-            setDv('');
-            setMsg('');
-            setCum('');
-            setLocale('');
-            setShowEditor(false);
-            store.current={};
+            setBuy('');setDm('');setDv('');setMsg('');setCum('');setLocale('');setShowEditor(false);store.current={};
           }} style={btnS}>RESET</button>
         </div>
       </div>
 
-      {showEditor && (isGlobal
-        ? <GlobalEditorPanel 
-            key={makeKey(buy,dm,dv,msg,resolvedCum,locale)} 
-            buy={buy} 
-            msg={msg} 
-            mode={dm} 
-            cum={resolvedCum} 
-            placeholders={phs} 
-            locale={locale} 
-            store={store.current} 
-            onStoreUpdate={handleStoreUpdate} 
-            onCancel={()=>setShowEditor(false)}/>
-        : <ConfigEditorPanel 
-            key={makeKey(buy,dm,dv,msg,resolvedCum,locale)} 
-            buy={buy} 
-            msg={msg} 
-            mode={dm} 
-            cum={resolvedCum} 
-            placeholders={phs} 
-            locale={locale} 
-            defaultLocale={defaultLocale} 
-            store={store.current} 
-            onStoreUpdate={handleStoreUpdate} 
-            onCancel={()=>setShowEditor(false)}/>
-      )}
+      {showEditor && <EditorPanel 
+        key={makeKey(buy,dm,dv,msg,resolvedCum,locale)} 
+        isGlobal={isGlobal}
+        buy={buy} 
+        msg={msg} 
+        mode={dm} 
+        cum={resolvedCum} 
+        placeholders={phs} 
+        locale={locale} 
+        defaultLocale={defaultLocale}
+        store={store.current} 
+        onStoreUpdate={handleStoreUpdate} 
+        onCancel={()=>setShowEditor(false)}/>}
     </div>
   );
 };
@@ -934,19 +834,21 @@ const ConfigTab = () => {
   const [configFound,setConfigFound]=useState(false); 
   const [defaultLocale,setDefaultLocale]=useState('English');
   const [searchErr,setSearchErr]=useState('');
+  const [configData,setConfigData]=useState(null);
 
   const handleSearch=async()=>{
-    if(!ref.trim()){
-      setSearchErr('Please enter a sales configuration reference.');
-      return;
-    }
+    if(!ref.trim()){setSearchErr('Please enter a sales configuration reference.');return;}
     setSearching(true); 
     setSearchErr(''); 
     setConfigFound(false);
+    setConfigData(null);
+    
     await new Promise(r=>setTimeout(r,900));
-    const ok=Math.random()>0.25;
-    if(ok){ 
-      setDefaultLocale(CONFIG_DEFAULTS[ref.trim()]||CONFIG_DEFAULTS['default']); 
+    
+    const config = MOCK_CONFIGS[ref.trim()];
+    if(config){ 
+      setDefaultLocale(config.defaultLocale); 
+      setConfigData(config);
       setConfigFound(true); 
     } else {
       setSearchErr('No templates found for this sales configuration. Please check the UUID and try again.');
@@ -961,22 +863,94 @@ const ConfigTab = () => {
         <div style={{marginBottom:'18px'}}>
           <label style={{display:'block',fontSize:'13px',color:'#666',marginBottom:'6px'}}>Sales configuration reference</label>
           <div style={{display:'flex',gap:'10px',alignItems:'flex-start'}}>
-            <input type="text" value={ref} onChange={e=>{setRef(e.target.value);setConfigFound(false);setSearchErr('');}}
+            <input type="text" value={ref} onChange={e=>{setRef(e.target.value);setConfigFound(false);setSearchErr('');setConfigData(null);}}
               placeholder="Enter sales config UUID" disabled={searching}
               style={{flex:1,padding:'8px 12px',border:'1px solid #d0d0d0',borderRadius:'4px',fontSize:'14px',backgroundColor:searching?'#f5f5f5':'white'}}/>
             <button onClick={handleSearch} disabled={!ref.trim()||searching} style={btnP(!ref.trim()||searching)}>
               {searching?'SEARCHING...':'SEARCH'}
             </button>
-            <button onClick={()=>{setRef('');setConfigFound(false);setSearchErr('');}} style={btnS}>RESET</button>
+            <button onClick={()=>{setRef('');setConfigFound(false);setSearchErr('');setConfigData(null);}} style={btnS}>RESET</button>
           </div>
           {searchErr&&<div style={{marginTop:'8px',padding:'10px 12px',backgroundColor:'#ffebee',border:'1px solid #f44336',borderRadius:'4px',fontSize:'13px',color:'#c62828'}}>{searchErr}</div>}
+          {configFound && configData && <div style={{marginTop:'8px',padding:'10px 12px',backgroundColor:'#e8f5e9',border:'1px solid #4caf50',borderRadius:'4px',fontSize:'13px',color:'#2e7d32'}}>
+            Configuration found: <strong>{configData.name}</strong> (Default locale: {defaultLocale})
+          </div>}
         </div>
-        <CriteriaForm isGlobal={false} disabled={!configFound} defaultLocale={defaultLocale} key={ref}/>
+        <CriteriaForm 
+          isGlobal={false} 
+          disabled={!configFound} 
+          defaultLocale={defaultLocale} 
+          configData={configData}
+          key={ref}/>
+      </div>
+      
+      <div style={{backgroundColor:'#f0f7ff',border:'1px solid #b3d9ff',borderRadius:'8px',padding:'18px',fontSize:'13px',color:'#1a1a1a',marginTop:'20px'}}>
+        <div style={{fontWeight:'600',color:'#0d47a1',marginBottom:'14px',fontSize:'14px',display:'flex',alignItems:'center',gap:'8px'}}>
+          <span>📋</span>
+          <span>Mock Configuration UUIDs for Testing</span>
+        </div>
+
+        <div style={{backgroundColor:'white',borderRadius:'6px',padding:'14px',marginBottom:'12px'}}>
+          <div style={{fontWeight:'600',color:'#2a303d',marginBottom:'8px',fontSize:'13px'}}>General Happy Path Testing:</div>
+          <div style={{marginBottom:'10px'}}>
+            <code style={{backgroundColor:'#e8f5e9',padding:'3px 8px',borderRadius:'3px',fontSize:'12px',fontFamily:'monospace',color:'#2e7d32'}}>aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee</code>
+            <div style={{marginLeft:'10px',marginTop:'4px',fontSize:'12px',color:'#555'}}>
+              Full featured configuration with all delivery modes and deliverables available. Use this to test complete workflows.
+            </div>
+          </div>
+          <div>
+            <code style={{backgroundColor:'#e8f5e9',padding:'3px 8px',borderRadius:'3px',fontSize:'12px',fontFamily:'monospace',color:'#2e7d32'}}>happy-path-uuid-1234-5678-9012-345678901234</code>
+            <div style={{marginLeft:'10px',marginTop:'4px',fontSize:'12px',color:'#555'}}>
+              Complete configuration with English default locale. All criteria combinations available.
+            </div>
+          </div>
+        </div>
+
+        <div style={{backgroundColor:'white',borderRadius:'6px',padding:'14px'}}>
+          <div style={{fontWeight:'600',color:'#2a303d',marginBottom:'8px',fontSize:'13px'}}>Specific Test Scenarios:</div>
+          
+          <div style={{marginBottom:'10px',paddingBottom:'10px',borderBottom:'1px solid #f0f0f0'}}>
+            <code style={{backgroundColor:'#fff3cd',padding:'3px 8px',borderRadius:'3px',fontSize:'12px',fontFamily:'monospace',color:'#f57c00'}}>5206c038-c714-4442-839e-5c5e12c55ae6</code>
+            <div style={{marginLeft:'10px',marginTop:'4px',fontSize:'12px',color:'#555',lineHeight:'1.6'}}>
+              <strong>Test:</strong> Swedish default locale + Mixed template availability<br/>
+              <strong>Has templates:</strong> Self/Email/DIGITAL_PDF/Email body/No, Self/Email/DIGITAL_PDF/Email subject<br/>
+              <strong>Missing templates:</strong> Email signature, PDF first page, EXCEL deliverables, Postcard first page<br/>
+              <strong>Limited criteria:</strong> No Instant Download available
+            </div>
+          </div>
+
+          <div style={{marginBottom:'10px',paddingBottom:'10px',borderBottom:'1px solid #f0f0f0'}}>
+            <code style={{backgroundColor:'#fff3cd',padding:'3px 8px',borderRadius:'3px',fontSize:'12px',fontFamily:'monospace',color:'#f57c00'}}>no-templates-1111-2222-3333-444444444444</code>
+            <div style={{marginLeft:'10px',marginTop:'4px',fontSize:'12px',color:'#555',lineHeight:'1.6'}}>
+              <strong>Test:</strong> CREATE TEMPLATE workflow for all criteria<br/>
+              <strong>Has templates:</strong> None - all show CREATE TEMPLATE button<br/>
+              <strong>Limited criteria:</strong> Self only, Email (DIGITAL_PDF, PLAIN_TEXT) and SMS only<br/>
+              <strong>Use case:</strong> Test template creation from scratch
+            </div>
+          </div>
+
+          <div style={{marginBottom:'10px',paddingBottom:'10px',borderBottom:'1px solid #f0f0f0'}}>
+            <code style={{backgroundColor:'#fff3cd',padding:'3px 8px',borderRadius:'3px',fontSize:'12px',fontFamily:'monospace',color:'#f57c00'}}>limited-config-aaaa-bbbb-cccc-dddddddddddd</code>
+            <div style={{marginLeft:'10px',marginTop:'4px',fontSize:'12px',color:'#555',lineHeight:'1.6'}}>
+              <strong>Test:</strong> Gifting-only configuration with Postcard focus<br/>
+              <strong>Limited criteria:</strong> Gifting only, Postcard and Email delivery<br/>
+              <strong>Use case:</strong> Test criteria filtering based on configuration restrictions
+            </div>
+          </div>
+
+          <div>
+            <code style={{backgroundColor:'#fff3cd',padding:'3px 8px',borderRadius:'3px',fontSize:'12px',fontFamily:'monospace',color:'#f57c00'}}>translation-test-1111-2222-3333-444444444444</code>
+            <div style={{marginLeft:'10px',marginTop:'4px',fontSize:'12px',color:'#555',lineHeight:'1.6'}}>
+              <strong>Test:</strong> Danish default locale with AI translation features<br/>
+              <strong>Has templates:</strong> Mix of available/unavailable templates<br/>
+              <strong>Use case:</strong> Test Auto-Translate with non-English default language
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
-
 
 /* ─── App Shell ───────────────────────────────────────────────────────────── */
 const sideItems=['Sales links','Approve Orders','Card','Code','Code Batch','Code Pool','Orders','Fraud Regex Rules','Program','Abnormal Purchase','Deliveries','Template Management'];
